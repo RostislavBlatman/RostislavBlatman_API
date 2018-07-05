@@ -1,0 +1,14 @@
+{
+  "1": {
+    "wrongWord": "When I live live in moscow",
+    "rightWord": "live"
+  },
+  "2": {
+    "wrongWord": "I drink drink a lot of Vodka",
+    "rightWord": "drink"
+  },
+  "3": {
+    "wrongWord": "I live live in saint-petersburg",
+    "rightWord": "live"
+  }
+}
