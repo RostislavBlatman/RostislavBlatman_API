@@ -41,7 +41,7 @@ public class TestYandexSpellerJSON {
     }
 
     @DataProvider(name = "repeat words with ignore capitalization")
-    public Object[][] repeatWords() {
+    public Object[][] dataWithRepeatWordsInSentences() {
         Map<String, TestingValues> dataMap = CustomReader.readJson("dataTestYandexSpellerJSON.json");
         Object[] values = dataMap.values().toArray();
         Object[][] newData = new Object[values.length][1];
