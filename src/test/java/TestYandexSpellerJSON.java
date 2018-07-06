@@ -3,20 +3,25 @@ import core.YandexSpellerApi;
 import entity.TestingValues;
 import enums.OptionsEnum;
 import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
+import org.hamcrest.Matchers;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import util.CustomReader;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import static entity.TestingValues.*;
 import static enums.ErrorCodesEnum.*;
+import static enums.ErrorsEnum.*;
 import static enums.LanguageEnum.EN;
 import static enums.LanguageEnum.RU;
 import static enums.OptionsEnum.*;
-import static enums.ParametersEnum.YANDEX_SPELLER_API_URI;
+import static enums.ParametersEnum.*;
+import static org.hamcrest.Matchers.lessThan;
 
 public class TestYandexSpellerJSON {
 
@@ -54,68 +59,7 @@ public class TestYandexSpellerJSON {
                 YandexSpellerApi.with()
                         .text(text)
                         .callApi());
-        assert answers.size() == 0 : "wrong size of answers";
-    }
-
-    @Test
-    public void makeBasicRequestTest() {
-        //get
-        RestAssured
-                .given()
-                .log().everything()
-                .get(YANDEX_SPELLER_API_URI.param)
-                .prettyPeek()
-                .then()
-                .assertThat().statusCode(HttpStatus.SC_OK);
-        //post
-        RestAssured
-                .given()
-                .log().everything()
-                .post(YANDEX_SPELLER_API_URI.param)
-                .prettyPeek()
-                .then()
-                .assertThat().statusCode(HttpStatus.SC_OK);
-        //head
-        RestAssured
-                .given()
-                .log().everything()
-                .head(YANDEX_SPELLER_API_URI.param)
-                .prettyPeek()
-                .then()
-                .assertThat().statusCode(HttpStatus.SC_OK);
-        //options
-        RestAssured
-                .given()
-                .log().everything()
-                .options(YANDEX_SPELLER_API_URI.param)
-                .prettyPeek()
-                .then()
-                .assertThat().statusCode(HttpStatus.SC_OK);
-        //patch
-        RestAssured
-                .given()
-                .log().everything()
-                .patch(YANDEX_SPELLER_API_URI.param)
-                .prettyPeek()
-                .then()
-                .assertThat().statusCode(HttpStatus.SC_METHOD_NOT_ALLOWED);
-        //put
-        RestAssured
-                .given()
-                .log().everything()
-                .put(YANDEX_SPELLER_API_URI.param)
-                .prettyPeek()
-                .then()
-                .assertThat().statusCode(HttpStatus.SC_METHOD_NOT_ALLOWED);
-
-        //delete
-        RestAssured
-                .given()
-                .log().everything()
-                .delete(YANDEX_SPELLER_API_URI.param)
-                .prettyPeek()
-                .then()
-                .assertThat().statusCode(HttpStatus.SC_METHOD_NOT_ALLOWED);
+        assert answers.size() == 0 : WRONG_ANSWERS_SIZE;
     }
 
     @Test
@@ -123,10 +67,22 @@ public class TestYandexSpellerJSON {
         List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
                 YandexSpellerApi.with()
                         .text(DATA_IGNORE_DIGITS.getWrongWord())
-                        .language(EN.lang)
+                        .language(EN)
                         .options(OptionsEnum.IGNORE_DIGITS.options)
                         .callApi());
-        assert answers.size() == 0 : "wrong size of answers";
+        assert answers.size() == 0 : WRONG_ANSWERS_SIZE;
+    }
+
+    @Test
+    public void checkSpellerWithDigitInWord() {
+        List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
+                YandexSpellerApi.with()
+                        .text(DATA_IGNORE_DIGITS.getWrongWord())
+                        .language(EN)
+                        .callApi());
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        assert answers.get(0).s.contains(DATA_IGNORE_DIGITS.getRightWord());
+
     }
 
     @Test
@@ -134,11 +90,31 @@ public class TestYandexSpellerJSON {
         List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
                 YandexSpellerApi.with()
                         .text(DATA_IGNORE_URL.getWrongWord())
-                        .language(EN.lang)
+                        .language(EN)
                         .options(IGNORE_URLS.options)
                         .callApi());
-        assert answers.size() == 0 : "wrong size of answers";
+        assert answers.size() == 0 : WRONG_ANSWERS_SIZE;
 
+    }
+
+    //bug
+    @Test
+    public void checkFixWordWithUrl() {
+        RestAssured
+                .given()
+                .queryParam(TEXT.param, DATA_IGNORE_URL.getWrongWord())
+                .params(LANG.param, EN.lang, "CustomParameter", "valueOfParam")
+                .accept(ContentType.JSON)
+                .log().everything()
+                .get(YANDEX_SPELLER_API_URI.param)
+                .prettyPeek()
+                .then()
+                .assertThat().statusCode(HttpStatus.SC_OK)
+                .body(Matchers.allOf(
+                        Matchers.stringContainsInOrder(Arrays.asList(DATA_IGNORE_URL.getWrongWord(), DATA_IGNORE_URL.getRightWord())),
+                        Matchers.containsString("\"code\":1")))
+                .contentType(ContentType.JSON)
+                .time(lessThan(20000L));
     }
 
     @Test
@@ -146,10 +122,25 @@ public class TestYandexSpellerJSON {
         List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
                 YandexSpellerApi.with()
                         .text(DATA_IGNORE_CAPITALIZATION.getWrongWord())
-                        .language(EN.lang)
+                        .language(RU)
                         .options(IGNORE_CAPITALIZATION.options)
                         .callApi());
-        assert answers.size() == 0 : "wrong size of answers";
+        assert answers.size() == 0 : WRONG_ANSWERS_SIZE;
+    }
+
+    //bug
+    @Test
+    public void useFixCapitalization() {
+        List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
+                YandexSpellerApi.with()
+                        .text(DATA_IGNORE_CAPITALIZATION.getWrongWord())
+                        .language(RU)
+                        .callApi());
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        answers.forEach(answer -> {
+            assert answer.code == ERROR_CAPITALIZATION.number : WRONG_ERROR_CODE;
+            assert answer.s.contains(DATA_IGNORE_CAPITALIZATION.getRightWord()) : WRONG_VARIANTS;
+        });
     }
 
     //find bug
@@ -158,10 +149,14 @@ public class TestYandexSpellerJSON {
         List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
                 YandexSpellerApi.with()
                         .text(DATA_FIND_REPEAT_WORDS.getWrongWord())
-                        .language(EN.lang)
+                        .language(EN)
                         .options(OptionsEnum.FIND_REPEAT_WORDS.options)
                         .callApi());
-        assert answers.size() > 0 : "wrong size of answers";
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        answers.forEach(answer -> {
+            assert answer.code == ERROR_REPEAT_WORD.number : WRONG_ERROR_CODE;
+            assert answer.s.contains(DATA_FIND_REPEAT_WORDS.getRightWord()) : WRONG_VARIANTS;
+        });
     }
 
     // bug
@@ -170,12 +165,12 @@ public class TestYandexSpellerJSON {
         List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
                 YandexSpellerApi.with()
                         .text(DATA_IGNORE_URL.getWrongWord())
-                        .language(EN.lang)
+                        .language(EN)
                         .callApi());
-        assert answers.size() > 0 : "expected number of answers is wrong";
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
         answers.forEach(answer -> {
-            assert answer.code == ERROR_UNKNOWN_WORD.number : "Wrong error code";
-            assert answer.s.contains(DATA_IGNORE_URL.getRightWord()) : "Wrong variants";
+            assert answer.code == ERROR_UNKNOWN_WORD.number : WRONG_ERROR_CODE;
+            assert answer.s.contains(DATA_IGNORE_URL.getRightWord()) : WRONG_VARIANTS;
         });
     }
 
@@ -184,12 +179,12 @@ public class TestYandexSpellerJSON {
     public void checkServiceExceptions() {
         List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
                 YandexSpellerApi.with()
-                        .text(WORDS_WITH_RANDOMIZED_ALPHABET.getWrongWord())
-                        .language(EN.lang)
+                        .text(WORD_WITH_RANDOMIZED_ALPHABET.getWrongWord())
+                        .language(EN)
                         .callApi());
-        assert answers.size() > 0 : "expected number of answers is wrong.";
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
         answers.forEach(answer -> {
-            assert answer.code == ERROR_UNKNOWN_WORD.number : "Wrong error code";
+            assert answer.code == ERROR_UNKNOWN_WORD.number : WRONG_ERROR_CODE;
         });
     }
 
@@ -199,13 +194,14 @@ public class TestYandexSpellerJSON {
         List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
                 YandexSpellerApi.with()
                         .text(testingValues.getWrongWord())
-                        .language(EN.lang)
-                        .options(Integer.toString(Integer.parseInt(FIND_REPEAT_WORDS.options) + Integer.parseInt(IGNORE_CAPITALIZATION.options)))
+                        .language(EN)
+                        .options(Integer.toString(Integer.parseInt(FIND_REPEAT_WORDS.options)
+                                + Integer.parseInt(IGNORE_CAPITALIZATION.options)))
                         .callApi());
-        assert answers.size() > 0 : "expected number of answers is wrong.";
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
         answers.forEach(answer -> {
-            assert answer.s.contains(testingValues.getRightWord()) : "Wrong variant";
-            assert answer.code == ERROR_REPEAT_WORD.number : "Wrong error code";
+            assert answer.s.contains(testingValues.getRightWord()) : WRONG_VARIANTS;
+            assert answer.code == ERROR_REPEAT_WORD.number : WRONG_ERROR_CODE;
         });
     }
 
@@ -215,11 +211,12 @@ public class TestYandexSpellerJSON {
         List<YandexSpellerAnswer> answers = YandexSpellerApi.getYandexSpellerAnswers(
                 YandexSpellerApi.with()
                         .text(DATA_WRONG_CAPITALIZATION.getWrongWord())
-                        .language(RU.lang)
+                        .language(RU)
                         .callApi());
-        assert answers.size() > 0 : "expected number of answers is wrong.";
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
         answers.forEach(answer -> {
-            assert answer.code == ERROR_CAPITALIZATION.number : "Wrong error code";
+            assert answer.code == ERROR_CAPITALIZATION.number : WRONG_ERROR_CODE;
+            assert answer.s.contains(DATA_WRONG_CAPITALIZATION.getRightWord()) : WRONG_VARIANTS;
         });
     }
 
