@@ -14,6 +14,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static core.YandexSpellerApi.baseRequestConfiguration;
+import static core.YandexSpellerApi.successResponse;
+import static entity.CheckTextsDataa.TEXTS_WITH_MISTAKES;
 import static entity.TestingValues.*;
 import static enums.ErrorCodesEnum.*;
 import static enums.ErrorsEnum.*;
@@ -21,6 +24,8 @@ import static enums.LanguageEnum.EN;
 import static enums.LanguageEnum.RU;
 import static enums.OptionsEnum.*;
 import static enums.ParametersEnum.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.lessThan;
 
 public class TestYandexSpellerJSON {
@@ -59,7 +64,7 @@ public class TestYandexSpellerJSON {
                 YandexSpellerApi.with()
                         .text(text)
                         .callApi());
-        assert answers.size() == 0 : WRONG_ANSWERS_SIZE;
+        assertThat(WRONG_ANSWERS_SIZE.description, answers, hasSize(0));
     }
 
     @Test
@@ -70,7 +75,7 @@ public class TestYandexSpellerJSON {
                         .language(EN)
                         .options(OptionsEnum.IGNORE_DIGITS.options)
                         .callApi());
-        assert answers.size() == 0 : WRONG_ANSWERS_SIZE;
+        assertThat(WRONG_ANSWERS_SIZE.description, answers, hasSize(0));
     }
 
     @Test
@@ -80,7 +85,7 @@ public class TestYandexSpellerJSON {
                         .text(DATA_IGNORE_DIGITS.getWrongWord())
                         .language(EN)
                         .callApi());
-        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE.description;
         assert answers.get(0).s.contains(DATA_IGNORE_DIGITS.getRightWord());
 
     }
@@ -93,7 +98,7 @@ public class TestYandexSpellerJSON {
                         .language(EN)
                         .options(IGNORE_URLS.options)
                         .callApi());
-        assert answers.size() == 0 : WRONG_ANSWERS_SIZE;
+        assertThat(WRONG_ANSWERS_SIZE.description, answers, hasSize(0));
 
     }
 
@@ -101,7 +106,7 @@ public class TestYandexSpellerJSON {
     @Test
     public void checkFixWordWithUrl() {
         RestAssured
-                .given()
+                .given(baseRequestConfiguration())
                 .queryParam(TEXT.param, DATA_IGNORE_URL.getWrongWord())
                 .params(LANG.param, EN.lang, "CustomParameter", "valueOfParam")
                 .accept(ContentType.JSON)
@@ -114,7 +119,22 @@ public class TestYandexSpellerJSON {
                         Matchers.stringContainsInOrder(Arrays.asList(DATA_IGNORE_URL.getWrongWord(), DATA_IGNORE_URL.getRightWord())),
                         Matchers.containsString("\"code\":1")))
                 .contentType(ContentType.JSON)
-                .time(lessThan(20000L));
+                .time(lessThan(20000L)).specification(successResponse());
+    }
+
+    @Test
+    public void checkTextsWithMistakesTest() {
+        List<List<YandexSpellerAnswer>> answers =
+                YandexSpellerApi.getYandexSpellerAnswersCheckTexts(
+                        YandexSpellerApi.with().language(RU).texts(TEXTS_WITH_MISTAKES.texts).callCheckTexts());
+
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE.description;
+        answers.forEach(answer -> {
+            answer.forEach(answ -> {
+                assert answ.code == ERROR_UNKNOWN_WORD.number : WRONG_ERROR_CODE.description;
+                assert answ.s.contains(TEXTS_WITH_MISTAKES.rightWords.get(answers.indexOf(answer))) : WRONG_VARIANTS.description;
+            });
+        });
     }
 
     @Test
@@ -125,7 +145,7 @@ public class TestYandexSpellerJSON {
                         .language(RU)
                         .options(IGNORE_CAPITALIZATION.options)
                         .callApi());
-        assert answers.size() == 0 : WRONG_ANSWERS_SIZE;
+        assertThat(WRONG_ANSWERS_SIZE.description, answers, hasSize(0));
     }
 
     //bug
@@ -136,10 +156,10 @@ public class TestYandexSpellerJSON {
                         .text(DATA_IGNORE_CAPITALIZATION.getWrongWord())
                         .language(RU)
                         .callApi());
-        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE.description;
         answers.forEach(answer -> {
-            assert answer.code == ERROR_CAPITALIZATION.number : WRONG_ERROR_CODE;
-            assert answer.s.contains(DATA_IGNORE_CAPITALIZATION.getRightWord()) : WRONG_VARIANTS;
+            assert answer.code == ERROR_CAPITALIZATION.number : WRONG_ERROR_CODE.description;
+            assert answer.s.contains(DATA_IGNORE_CAPITALIZATION.getRightWord()) : WRONG_VARIANTS.description;
         });
     }
 
@@ -152,10 +172,10 @@ public class TestYandexSpellerJSON {
                         .language(EN)
                         .options(OptionsEnum.FIND_REPEAT_WORDS.options)
                         .callApi());
-        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE.description;
         answers.forEach(answer -> {
-            assert answer.code == ERROR_REPEAT_WORD.number : WRONG_ERROR_CODE;
-            assert answer.s.contains(DATA_FIND_REPEAT_WORDS.getRightWord()) : WRONG_VARIANTS;
+            assert answer.code == ERROR_REPEAT_WORD.number : WRONG_ERROR_CODE.description;
+            assert answer.s.contains(DATA_FIND_REPEAT_WORDS.getRightWord()) : WRONG_VARIANTS.description;
         });
     }
 
@@ -169,8 +189,8 @@ public class TestYandexSpellerJSON {
                         .callApi());
         assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
         answers.forEach(answer -> {
-            assert answer.code == ERROR_UNKNOWN_WORD.number : WRONG_ERROR_CODE;
-            assert answer.s.contains(DATA_IGNORE_URL.getRightWord()) : WRONG_VARIANTS;
+            assert answer.code == ERROR_UNKNOWN_WORD.number : WRONG_ERROR_CODE.description;
+            assert answer.s.contains(DATA_IGNORE_URL.getRightWord()) : WRONG_VARIANTS.description;
         });
     }
 
@@ -182,9 +202,9 @@ public class TestYandexSpellerJSON {
                         .text(WORD_WITH_RANDOMIZED_ALPHABET.getWrongWord())
                         .language(EN)
                         .callApi());
-        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE.description;
         answers.forEach(answer -> {
-            assert answer.code == ERROR_UNKNOWN_WORD.number : WRONG_ERROR_CODE;
+            assert answer.code == ERROR_UNKNOWN_WORD.number : WRONG_ERROR_CODE.description;
         });
     }
 
@@ -198,10 +218,10 @@ public class TestYandexSpellerJSON {
                         .options(Integer.toString(Integer.parseInt(FIND_REPEAT_WORDS.options)
                                 + Integer.parseInt(IGNORE_CAPITALIZATION.options)))
                         .callApi());
-        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE.description;
         answers.forEach(answer -> {
-            assert answer.s.contains(testingValues.getRightWord()) : WRONG_VARIANTS;
-            assert answer.code == ERROR_REPEAT_WORD.number : WRONG_ERROR_CODE;
+            assert answer.s.contains(testingValues.getRightWord()) : WRONG_VARIANTS.description;
+            assert answer.code == ERROR_REPEAT_WORD.number : WRONG_ERROR_CODE.description;
         });
     }
 
@@ -213,10 +233,10 @@ public class TestYandexSpellerJSON {
                         .text(DATA_WRONG_CAPITALIZATION.getWrongWord())
                         .language(RU)
                         .callApi());
-        assert answers.size() > 0 : WRONG_ANSWERS_SIZE;
+        assert answers.size() > 0 : WRONG_ANSWERS_SIZE.description;
         answers.forEach(answer -> {
-            assert answer.code == ERROR_CAPITALIZATION.number : WRONG_ERROR_CODE;
-            assert answer.s.contains(DATA_WRONG_CAPITALIZATION.getRightWord()) : WRONG_VARIANTS;
+            assert answer.code == ERROR_CAPITALIZATION.number : WRONG_ERROR_CODE.description;
+            assert answer.s.contains(DATA_WRONG_CAPITALIZATION.getRightWord()) : WRONG_VARIANTS.description;
         });
     }
 
